@@ -34,6 +34,7 @@ class ProductTemplate(models.Model):
         string='Per-Company Routes',
         comodel_name='product.template.company.routes',
         inverse_name='product_tmpl_id',
+        help='Maps companies to their ticked routes.  If a company is missing from this table, this is equivalent to having no routes selected.',
     )
 
     @api.depends('per_company_route_ids')
