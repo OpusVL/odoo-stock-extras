@@ -22,14 +22,13 @@
 
 from openerp import models, fields, api
 
+from openerp.osv import osv
+from openerp.osv import fields as old_fields
+
+
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
-    route_ids = fields.Many2many(
-        compute='_compute_route_ids',
-        readonly=True,
-    )
-    
     per_company_route_ids = fields.One2many(
         string='Per-Company Routes',
         comodel_name='product.template.company.routes',
@@ -37,10 +36,31 @@ class ProductTemplate(models.Model):
         help='Maps companies to their ticked routes.  If a company is missing from this table, this is equivalent to having no routes selected.',
     )
 
-    @api.depends('per_company_route_ids')
-    @api.one
-    def _compute_route_ids(self):
-        self.route_ids = self.per_company_route_ids._get_company_routes(self.env.user.company_id)
+
+
+class product_template(osv.osv):
+    _inherit = 'product.template'
+
+    # Setting the computed via the old API bypasses the cache and the need for @api.depends,
+    # and so allows the value of the computed field to depend on context, who is logged in, etc
+
+    _columns = {
+        'route_ids': old_fields.function(
+            lambda self, *a, **kw: self._calculate_route_ids(*a, **kw),
+            relation='stock.location.route',
+            store=False,
+            method=True,
+            type='many2many',
+        ),
+    }
+        
+    def _calculate_route_ids(self, cr, uid, ids, fields, arg, context=None):
+        res = {}
+        user = self.pool['res.users'].browse(cr, uid, uid, context=context)
+        products = self.pool['product.template'].browse(cr, uid, ids, context=context)
+        for product in products:
+            res[product.id] = product.per_company_route_ids._get_company_routes(user.company_id)
+        return res
 
 
 
