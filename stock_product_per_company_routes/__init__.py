@@ -24,6 +24,6 @@ from . import models
 
 
 def pre_init_hook(cr):
-    
+    return
 
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
