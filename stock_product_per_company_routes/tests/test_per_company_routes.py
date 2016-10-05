@@ -23,12 +23,9 @@
 from openerp.tests import common
 from openerp import SUPERUSER_ID
 
-class RoutesTests(common.TransactionCase):
-    at_install = False
-    post_install = True
-
+class RoutesCase(common.TransactionCase):
     def setUp(self):
-        super(RoutesTests, self).setUp()
+        super(RoutesCase, self).setUp()
         Route = self.env['stock.location.route']
         self.products = {}
         self.routes = {}
@@ -40,6 +37,10 @@ class RoutesTests(common.TransactionCase):
         self._setup_make_company('acme_anvils')
 
         self.routes['Make To Order'] = Route.search([('name', '=', 'Make To Order')])
+        # The Buy and Manufacture routes are fakes, just copies of Make To Order.
+        # Good enough for a white-box unit test.
+        self.routes['Buy'] = self.routes['Make To Order'].copy({'name': 'Buy'})
+        self.routes['Manufacture'] = self.routes['Make To Order'].copy({'name': 'Manufacture'})
         for r in self.routes.values():
             r.company_id = False
 
@@ -47,10 +48,14 @@ class RoutesTests(common.TransactionCase):
             name='TEST Anvil',
             per_company_route_ids=[
                 (0, False, {'company_id': self.companies['acme_anvils'].id,
-                            'route_ids': [(6, False, [self.routes['Make To Order'].id])]}),
+                            'route_ids': [(6, False, [self.routes[name].id
+                                                      for name in ['Make To Order',
+                                                                   'Manufacture']])]}),
+                (0, False, {'company_id': self.companies['acme_widgets'].id,
+                            'route_ids': [(6, False, [self.routes[name].id
+                                                      for name in ['Make To Order', 'Buy']])]}),
             ],
         ))
-
 
     def _setup_make_company(self, name):
         ResCompany = self.env['res.company']
@@ -59,6 +64,13 @@ class RoutesTests(common.TransactionCase):
         ))
 
 
+
+class SetupTests(RoutesCase):
+    """Sanity checks of the common setup and setup helpers.
+    """
+    at_install = False
+    post_install = True
+    
     def test_setup_make_company(self):
         self._setup_make_company('acme_tunnels')
 
@@ -70,24 +82,35 @@ class RoutesTests(common.TransactionCase):
     def test_setup_of_routes(self):
         result = self.routes
         
-        self.assertSetEqual(frozenset(r.name for r in result.values()), frozenset(['Make To Order']))
+        self.assertSetEqual(frozenset(r.name for r in result.values()), frozenset(['Make To Order', 'Buy', 'Manufacture']))
         self.assertFalse(any(r.company_id for r in result.values()))
 
 
+        
+class AdminSwitchingHatsTests(RoutesCase):
+    """Tests what happens when the Admin user is logged in and is switching hats between companies.
+    """
+    at_install = False
+    post_install = True
+    
     def test_anvil_routes_mto_for_anvils_company(self):
+        """ACME Anvils manufactures Anvils to order
+        """
         self.users['admin'].company_id = self.companies['acme_anvils']
         
         result = self.products['Anvil'].sudo(self.users['admin']).route_ids
 
-        self.assertSetEqual(frozenset(result.mapped('name')), frozenset(['Make To Order']))
+        self.assertSetEqual(frozenset(result.mapped('name')), frozenset(['Make To Order', 'Manufacture']))
 
         
-    def test_anvil_routes_blank_for_widgets_company(self):
+    def test_widgets_company_buys_anvil_to_order(self):
+        """ACME Widgets buys Anvils to order
+        """
         self.users['admin'].company_id = self.companies['acme_widgets']
         
         result = self.products['Anvil'].sudo(self.users['admin']).route_ids
 
-        self.assertSetEqual(frozenset(result.mapped('name')), frozenset())
+        self.assertSetEqual(frozenset(result.mapped('name')), frozenset(['Make To Order', 'Buy']))
         
     
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
