@@ -51,6 +51,7 @@ class product_template(osv.osv):
             store=False,
             method=True,
             type='many2many',
+            string='Routes',
         ),
     }
         
