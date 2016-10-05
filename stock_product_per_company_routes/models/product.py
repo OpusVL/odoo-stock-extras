@@ -89,8 +89,9 @@ class ProductTemplateCompanyRoutes(models.Model):
         string='Routes',
         comodel_name='stock.location.route',
         required=True,
-        domain=[('product_selectable', '=', True)],
+        domain="[('product_selectable', '=', True), '|', ('company_id', '=', False), ('company_id', '=', company_id)]",
     )
+
 
     def _get_company_routes(self, company):
         return self.filtered(lambda r: r.company_id == company).mapped('route_ids')
