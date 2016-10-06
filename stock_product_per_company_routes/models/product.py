@@ -20,6 +20,7 @@
 #
 ##############################################################################
 
+from openerp import SUPERUSER_ID
 from openerp import models, fields, api
 
 from openerp.osv import osv
@@ -58,7 +59,7 @@ class product_template(osv.osv):
     def _calculate_route_ids(self, cr, uid, ids, fields, arg, context=None):
         res = {}
         user = self.pool['res.users'].browse(cr, uid, uid, context=context)
-        products = self.pool['product.template'].browse(cr, uid, ids, context=context)
+        products = self.pool['product.template'].browse(cr, SUPERUSER_ID, ids, context=context)
         for product in products:
             res[product.id] = product.per_company_route_ids._get_company_routes(user.company_id)
         return res

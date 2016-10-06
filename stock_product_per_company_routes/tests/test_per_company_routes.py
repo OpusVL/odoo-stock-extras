@@ -47,6 +47,7 @@ class RoutesCase(common.TransactionCase):
     def setup_create_anvil(self):
         self.products['Anvil'] = self.env['product.template'].create(dict(
             name='TEST Anvil',
+            company_id=False,
             per_company_route_ids=[
                 (0, False, {'company_id': self.companies['acme_anvils'].id,
                             'route_ids': [(6, False, [self.routes[name].id
@@ -57,6 +58,24 @@ class RoutesCase(common.TransactionCase):
                                                       for name in ['Make To Order', 'Buy']])]}),
             ],
         ))
+
+    def _setup_create_salesmen(self):
+        self._setup_create_salesman('acme_widgets')
+        self._setup_create_salesman('acme_anvils')
+
+    def _setup_create_salesman(self, company_slug):
+        salesman_slug = 'salesman_{}'.format(company_slug)
+        email = '{}@test.example.org'.format(salesman_slug)
+        company_id = self.companies[company_slug].id
+        self.users[salesman_slug] = self.env['res.users'].create({
+            'company_id': company_id,
+            'company_ids': [(6, False, [company_id])],
+            'name': 'TEST {}'.format(salesman_slug),
+            'email': email,
+            'login': email,
+            'groups_id': [(4, self.ref('base.group_sale_salesman'), False)],
+        })
+
 
     def _setup_make_company(self, name):
         ResCompany = self.env['res.company']
@@ -117,6 +136,35 @@ class AdminSwitchingHatsTests(RoutesCaseWithAdminCreatedAnvil):
         result = self.products['Anvil'].sudo(self.users['admin']).route_ids
 
         self.assertSetEqual(frozenset(result.mapped('name')), frozenset(['Make To Order', 'Buy']))
+
+
+class SalesmanAccessTests(RoutesCaseWithAdminCreatedAnvil):
+    """Tests what happens when a salesman looks at route_ids.
+    """
+    at_install = False
+    post_install = True
+
+    def setUp(self):
+        super(SalesmanAccessTests, self).setUp()
+        self._setup_create_salesmen()
+
+
+    def test_anvil_routes_mto_for_anvils_salesman(self):
+        """ACME Anvils salesman manufactures Anvils to order
+        """
+        result = self.products['Anvil'].sudo(self.users['salesman_acme_anvils']).route_ids
+
+        self.assertSetEqual(frozenset(result.mapped('name')), frozenset(['Make To Order', 'Manufacture']))
+
+        
+    def test_widgets_salesman_buys_anvil_to_order(self):
+        """ACME Widgets salesman buys Anvils to order
+        """
+        result = self.products['Anvil'].sudo(self.users['salesman_acme_widgets']).route_ids
+
+        self.assertSetEqual(frozenset(result.mapped('name')), frozenset(['Make To Order', 'Buy']))
+
+    
         
     
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
