@@ -1,0 +1,86 @@
+#! /usr/bin/env python2
+
+"""Test data migration
+"""
+
+import sys
+import argparse
+import erppeek
+
+def main(options):
+    """Main program."""
+    DataMigrationTest(options).run()
+    return
+
+class DataMigrationTest():
+    def __init__(self, options):
+        self.options = options
+
+    def run(self):
+        options = self.options
+        oe = erppeek.Client(server=options.url)
+        if not options.skip_createdb:
+            oe.create_database(options.master_password, options.dbname, demo=True, lang='en_GB', user_password='admin')
+        oe.login('admin', 'admin', database=options.dbname)
+        if not options.skip_deps_install:
+            oe.install('sale', 'purchase', 'stock', 'mrp')
+        if self.options.stop_after_deps_install:
+            return
+        Product = oe.model('product.template')
+        products_before = Product.browse(Product.search([]))
+        product_routes_before = {
+            p.id: frozenset([r.id for r in p.route_ids])
+            for p in products_before
+        }
+
+        oe.install('stock_product_per_company_routes')
+
+        products_after = Product.browse(Product.search([]))
+        product_routes_after = {
+            p.id: frozenset([r.id for r in p.route_ids])
+            for p in products_after
+        }
+
+        print "1..1"
+        if product_routes_before != product_routes_after:
+            print "not ok 1 - product_routes_before != product_routes_after"
+            before_keys = frozenset(product_routes_before)
+            after_keys = frozenset(product_routes_after)
+            lost_ids = before_keys - after_keys
+            if lost_ids:
+                print "    lost ids: {}".format(' '.join(sorted(lost_ids)))
+            gained_ids = after_keys - before_keys
+            if gained_ids:
+                print "    gained ids: {}".format(' '.join(sorted(gained_ids)))
+
+            common_ids = after_keys & before_keys
+            for product_id in sorted(common_ids):
+                before = product_routes_before[product_id]
+                after = product_routes_after[product_id]
+                if before == after:
+                    continue
+                print "    product {}: ids before: {}".format(product_id, sorted(before))
+                print "    product {}: ids after: {}".format(product_id, sorted(after))
+        else:
+            print "ok 1 - product_routes_before == product_routes_after"
+        
+    
+
+def get_options():
+    """Get options for the script."""
+    parser = argparse.ArgumentParser(
+        description="test data migration",
+    )
+    # parser.add_argument() calls here
+    parser.add_argument('-D', '--dbname', required=True)
+    parser.add_argument('-M', '--master-password', default='admin')
+    parser.add_argument('-U', '--url', default='http://localhost:8069')
+    parser.add_argument('--stop-after-deps-install', action='store_true', help='stop after deps install')
+    parser.add_argument('--skip-createdb', action='store_true', help='skip database creation')
+    parser.add_argument('--skip-deps-install', action='store_true', help='skip deps install')
+    options = parser.parse_args()
+    # extra processing of options here
+    return options
+
+if __name__ == "__main__":
+    main(get_options())
