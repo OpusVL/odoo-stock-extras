@@ -1,6 +1,8 @@
 #! /usr/bin/env python2
 
-"""Test data migration
+"""Test data migration.
+
+Bonus: after all the guff from the install() call, TAP is output.
 """
 
 import sys
