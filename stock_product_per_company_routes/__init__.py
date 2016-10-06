@@ -45,8 +45,13 @@ def post_init_hook(cr, registry):
     _logger.info('In post_init_hook')
     try:
         migrate_product_routes(cr, registry)
+        drop_backup_routes_table(cr)
     finally:
         _logger.info('End of post_init_hook')
+
+def drop_backup_routes_table(cr):
+    _logger.info('Dropping backup routes table')
+    cr.execute("""DROP TABLE stock_product_per_company_existing_product_routes""")
 
 
 def migrate_product_routes(cr, registry):
