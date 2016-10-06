@@ -44,6 +44,7 @@ class RoutesCase(common.TransactionCase):
         for r in self.routes.values():
             r.company_id = False
 
+    def setup_create_anvil(self):
         self.products['Anvil'] = self.env['product.template'].create(dict(
             name='TEST Anvil',
             per_company_route_ids=[
@@ -63,14 +64,19 @@ class RoutesCase(common.TransactionCase):
             name='TEST {}'.format(name),
         ))
 
+class RoutesCaseWithAdminCreatedAnvil(RoutesCase):
+    def setUp(self):
+        super(RoutesCaseWithAdminCreatedAnvil, self).setUp()
+        self.setup_create_anvil()
 
 
-class SetupTests(RoutesCase):
+class SetupTests(RoutesCaseWithAdminCreatedAnvil):
     """Sanity checks of the common setup and setup helpers.
     """
     at_install = False
     post_install = True
-    
+
+
     def test_setup_make_company(self):
         self._setup_make_company('acme_tunnels')
 
@@ -86,13 +92,13 @@ class SetupTests(RoutesCase):
         self.assertFalse(any(r.company_id for r in result.values()))
 
 
-        
-class AdminSwitchingHatsTests(RoutesCase):
+class AdminSwitchingHatsTests(RoutesCaseWithAdminCreatedAnvil):
     """Tests what happens when the Admin user is logged in and is switching hats between companies.
     """
     at_install = False
     post_install = True
-    
+
+
     def test_anvil_routes_mto_for_anvils_company(self):
         """ACME Anvils manufactures Anvils to order
         """
