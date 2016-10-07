@@ -30,7 +30,15 @@
     
     'category': 'Warehouse',
     
-    'description': """Per-company procurement routes on products,
+    'description': """Per-company procurement routes on products.
+
+
+    This adds a new table to the procurements tab of the product form,
+    and the original Routes field is made read-only and computed based on the contents of that table.
+    
+    In order to see the per-company route list you need to be in the group Technical Settings / Show per-company routes on products.
+
+    In order to change the per-company routes you need to be in the group Warehouse / Manager.
 """,
     'images': [
     ],
