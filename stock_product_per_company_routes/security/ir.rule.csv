@@ -1,2 +1,2 @@
 id,name,model_id:id,groups:id,domain_force,perm_read,perm_write,perm_create,perm_unlink
-rule_sales_manager_product_template_company_routes,Company Route - Sales Manager,model_product_template_company_routes,,"[('company_id', 'in', user.company_ids.ids)]",1,1,1,1
+rule_general_product_template_company_routes,Company Route - All accessing users,model_product_template_company_routes,,"[('company_id', 'in', user.company_ids.ids)]",1,1,1,1
