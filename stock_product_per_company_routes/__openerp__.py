@@ -22,15 +22,15 @@
 
 
 {
-    'name': 'Per-company procurement rules on products',
+    'name': 'Per-company procurement routes on products',
     'version': '0.1',
     'author': 'OpusVL',
     'website': 'http://opusvl.com/',
-    'summary': 'Per-company procurement rules on products',
+    'summary': 'Per-company procurement routes on products',
     
     'category': 'Warehouse',
     
-    'description': """Per-company procurement rules on products,
+    'description': """Per-company procurement routes on products,
 """,
     'images': [
     ],
