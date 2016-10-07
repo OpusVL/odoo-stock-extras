@@ -39,6 +39,7 @@
         'product',
     ],
     'data': [
+        'security/groups.xml',
         'security/ir.model.access.csv',
         'security/ir.rule.csv',
         'views/product.xml',
