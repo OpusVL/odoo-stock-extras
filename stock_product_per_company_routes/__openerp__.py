@@ -39,6 +39,8 @@
         'product',
     ],
     'data': [
+        'security/ir.model.access.csv',
+        'security/ir.rule.csv',
         'views/product.xml',
     ],
     'post_init_hook': 'post_init_hook',

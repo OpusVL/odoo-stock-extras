@@ -22,7 +22,7 @@
 
 from openerp.tests import common
 from openerp import SUPERUSER_ID
-from openerp.exceptions import AccessError
+from openerp.exceptions import AccessError, AccessDenied
 
 class RoutesCase(common.TransactionCase):
     def setUp(self):
@@ -258,6 +258,10 @@ class UniCompanySalesManagerAccessTests(RoutesCaseWithAdminCreatedAnvil):
         self.assertSetEqual(frozenset(result.mapped('name')), frozenset(['Make To Order', 'Buy']))
 
 
+
+    def assertRaisesMentioningAccess(self):
+        return self.assertRaisesRegexp(Exception, 'Access')
+    
     def test_widgets_manager_cannot_delete_other_company_routes(self):
         """ACME Widgets manager cannot delete other company routes"""
         anvil = self._get_product_as('Anvil', 'manager_acme_widgets')
@@ -265,7 +269,7 @@ class UniCompanySalesManagerAccessTests(RoutesCaseWithAdminCreatedAnvil):
 
         pcris = anvil.sudo().per_company_route_ids.filtered(lambda p: p.company_id != manager.company_id)
         for pcri in pcris:
-            with self.assertRaises(AccessError):
+            with self.assertRaisesMentioningAccess():
                 anvil.write({
                     'per_company_route_ids': [(2, pcri.id, False)],
                 })
@@ -280,7 +284,7 @@ class UniCompanySalesManagerAccessTests(RoutesCaseWithAdminCreatedAnvil):
                                                for i in anvil.per_company_route_ids.ids]})
         manager = self.users['manager_acme_widgets']
         
-        with self.assertRaises(AccessError):
+        with self.assertRaisesMentioningAccess():
             anvil.sudo(manager).write({
                 'per_company_route_ids': [(0, False, {
                     'company_id': self.companies['acme_anvils'].id,
@@ -297,7 +301,7 @@ class UniCompanySalesManagerAccessTests(RoutesCaseWithAdminCreatedAnvil):
         acme_anvils = self.companies['acme_anvils']
         anvils_pairing_id = anvil.per_company_route_ids.filtered(lambda r: r.company_id == acme_anvils).id
         
-        with self.assertRaises(AccessError):
+        with self.assertRaisesMentioningAccess():
             anvil.sudo(manager).write({
                 'per_company_route_ids': [(1, anvils_pairing_id, {'route_ids': [(4, self.routes['Manufacture'].id, False)]})],
             })
@@ -310,7 +314,7 @@ class UniCompanySalesManagerAccessTests(RoutesCaseWithAdminCreatedAnvil):
         acme_anvils = self.companies['acme_anvils']
         anvils_pairing_id = anvil.per_company_route_ids.filtered(lambda r: r.company_id == acme_anvils).id
 
-        with self.assertRaises(AccessError):
+        with self.assertRaisesMentioningAccess():
             anvil.sudo(manager).write({
                 'per_company_route_ids': [(1, anvils_pairing_id, {'route_ids': [(3, self.routes['Buy'].id, False)]})],
             })
