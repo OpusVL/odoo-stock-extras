@@ -64,15 +64,19 @@ class RoutesCase(common.TransactionCase):
         self._setup_create_salesman('acme_widgets')
         self._setup_create_salesman('acme_anvils')
 
-    def _setup_create_salesman(self, company_slug, manager=False):
+    def _setup_create_salesman(self, company_slug, manager=False, all_companies=False):
         prefix = 'manager' if manager else 'salesman'
         salesman_slug = '{}_{}'.format(prefix, company_slug)
         email = '{}@test.example.org'.format(salesman_slug)
         company_id = self.companies[company_slug].id
+        if all_companies:
+            company_ids = [c.id for c in self.companies.values()]
+        else:
+            company_ids = [company_id]
         groups_edits = [(4, self.ref('base.group_sale_manager' if manager else 'base.group_sale_salesman'), False)]
         self.users[salesman_slug] = self.env['res.users'].create({
             'company_id': company_id,
-            'company_ids': [(6, False, [company_id])],
+            'company_ids': [(6, False, company_ids)],
             'name': 'TEST {}'.format(salesman_slug),
             'email': email,
             'login': email,
@@ -365,6 +369,143 @@ class UniCompanySalesManagerAccessTests(RoutesCaseWithAdminCreatedAnvil):
 
     def test_widgets_manager_may_remove_routes_from_own_company(self):
         """Widgets manager may remove routes from own company"""
+        anvil = self.products['Anvil']
+        manager = self.users['manager_acme_widgets']
+        acme_widgets = self.companies['acme_widgets']
+        widgets_pairing_id = anvil.per_company_route_ids.filtered(lambda r: r.company_id == acme_widgets).id
+
+        anvil.sudo(manager).write({
+            'per_company_route_ids': [(1, widgets_pairing_id, {'route_ids': [(3, self.routes['Buy'].id, False)]})],
+        })
+    
+            
+class MultiCompanySalesManagerAccessTests(RoutesCaseWithAdminCreatedAnvil):
+    """Test what happens when a multi-company sales manager edits per-company routes.
+    """
+
+    def setUp(self):
+        super(MultiCompanySalesManagerAccessTests, self).setUp()
+        self._setup_create_salesman('acme_anvils', manager=True, all_companies=True)
+        self._setup_create_salesman('acme_widgets', manager=True, all_companies=True)
+        self.widgets = self.companies['acme_widgets']
+        self.anvils = self.companies['acme_anvils']
+
+
+    def test_anvil_routes_mto_for_anvils_manager(self):
+        """Multi-company ACME Anvils manager manufactures Anvils to order
+        """
+        result = self.products['Anvil'].sudo(self.users['manager_acme_anvils']).route_ids
+
+        self.assertSetEqual(frozenset(result.mapped('name')), frozenset(['Make To Order', 'Manufacture']))
+
+        
+    def test_widgets_manager_buys_anvil_to_order(self):
+        """Multi-company ACME Widgets manager buys Anvils to order
+        """
+        result = self.products['Anvil'].sudo(self.users['manager_acme_widgets']).route_ids
+
+        self.assertSetEqual(frozenset(result.mapped('name')), frozenset(['Make To Order', 'Buy']))
+
+
+
+    def test_widgets_manager_can_delete_other_company_routes(self):
+        """Multi-company ACME Widgets manager can delete other company routes"""
+        anvil = self._get_product_as('Anvil', 'manager_acme_widgets')
+        manager = self.users['manager_acme_widgets']
+
+        pcri = anvil.sudo().per_company_route_ids.filtered(lambda p: p.company_id == self.widgets)
+        anvil.write({
+            'per_company_route_ids': [(2, pcri.id, False)],
+        })
+
+
+    def test_widgets_manager_can_add_other_company_routes(self):
+        """Multi-company Widgets manager may add other company to routes.
+        """
+        anvil = self.products['Anvil']
+        # Clear the Anvil's company routes
+        anvil.write({'per_company_route_ids': [(2, i, False)
+                                               for i in anvil.per_company_route_ids.ids]})
+        manager = self.users['manager_acme_widgets']
+        
+        anvil.sudo(manager).write({
+            'per_company_route_ids': [(0, False, {
+                'company_id': self.companies['acme_anvils'].id,
+                'route_ids': [(6, False, [self.routes['Buy'].id])],
+            })],
+        })
+            
+
+    def test_widgets_manager_can_add_routes_for_other_company(self):
+        """Multi-company Widgets manager may add routes for another company.
+        """
+        anvil = self.products['Anvil']
+        manager = self.users['manager_acme_widgets']
+        acme_anvils = self.companies['acme_anvils']
+        anvils_pairing_id = anvil.per_company_route_ids.filtered(lambda r: r.company_id == acme_anvils).id
+        
+        anvil.sudo(manager).write({
+            'per_company_route_ids': [(1, anvils_pairing_id, {'route_ids': [(4, self.routes['Manufacture'].id, False)]})],
+        })
+
+
+    def test_widgets_manager_can_remove_routes_from_other_company(self):
+        """Multi-company Widgets manager may remove routes from other company"""
+        anvil = self.products['Anvil']
+        manager = self.users['manager_acme_widgets']
+        acme_anvils = self.companies['acme_anvils']
+        anvils_pairing_id = anvil.per_company_route_ids.filtered(lambda r: r.company_id == acme_anvils).id
+
+        anvil.sudo(manager).write({
+            'per_company_route_ids': [(1, anvils_pairing_id, {'route_ids': [(3, self.routes['Buy'].id, False)]})],
+        })
+
+
+    def test_widgets_manager_may_delete_own_company_routes(self):
+        """Multi-company ACME Widgets manager may delete own company routes"""
+        anvil = self._get_product_as('Anvil', 'manager_acme_widgets')
+        manager = self.users['manager_acme_widgets']
+        pcris = anvil.sudo().per_company_route_ids.filtered(lambda p: p.company_id == manager.company_id)
+        
+        anvil.write({
+            'per_company_route_ids': [(2, pcris.id, False)],
+        })
+
+
+    def test_widgets_manager_may_add_own_company_routes(self):
+        """Multi-company Widgets manager may add own company to routes.
+        """
+        anvil = self.products['Anvil']
+        # Clear the Anvil's company routes
+        anvil.write({'per_company_route_ids': [(2, i, False)
+                                               for i in anvil.per_company_route_ids.ids]})
+        manager = self.users['manager_acme_widgets']
+        
+        anvil.sudo(manager).write({
+            'per_company_route_ids': [(0, False, {
+                'company_id': self.companies['acme_widgets'].id,
+                'route_ids': [(6, False, [self.routes['Buy'].id])],
+            })],
+        })
+
+            
+
+    def test_widgets_manager_may_add_routes_for_own_company(self):
+        """Multi-company Widgets manager may routes for their own company.
+        """
+        anvil = self.products['Anvil']
+        manager = self.users['manager_acme_widgets']
+        acme_widgets = self.companies['acme_widgets']
+        anvils_pairing_id = anvil.per_company_route_ids.filtered(lambda r: r.company_id == acme_widgets).id
+        
+        anvil.sudo(manager).write({
+            'per_company_route_ids': [(1, anvils_pairing_id, {'route_ids': [(4, self.routes['Manufacture'].id, False)]})],
+        })
+
+
+
+    def test_widgets_manager_may_remove_routes_from_own_company(self):
+        """Multi-company Widgets manager may remove routes from own company"""
         anvil = self.products['Anvil']
         manager = self.users['manager_acme_widgets']
         acme_widgets = self.companies['acme_widgets']
