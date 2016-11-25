@@ -28,8 +28,14 @@ class StockPicking(models.Model):
     partner_invoice_id = fields.Many2one(
         comodel_name='res.partner',
         string='Invoice Address',
-        readonly=True,
-        states={'draft': [('readonly', False)]},
+        compute='_compute_partner_invoice_id',
     )
+
+    # Computed field, rather than related, so easier to override
+    @api.one
+    @api.depends('sale_id.partner_invoice_id')
+    def _compute_partner_invoice_id(self):
+        sale = self.sale_id
+        self.partner_invoice_id = sale and sale.partner_invoice_id
 
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:

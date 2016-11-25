@@ -26,16 +26,19 @@
     'version': '0.1',
     'author': 'OpusVL',
     'website': 'http://opusvl.com/',
-    'summary': 'Add field partner_invoice_id to stock.picking',
+    'summary': 'Add field partner_invoice_id to stock.picking, computed from sale order.',
     
     'category': 'Warehouse',
     
-    'description': """Add field partner_invoice_id to stock.picking.""",
+    'description': """Add field partner_invoice_id to stock.picking.
+
+    The field is pulled directly off the sale order that generated the picking.
+    """,
     'images': [
     ],
     'depends': [
         'base',
-        'stock',
+        'sale_stock',
     ],
     'data': [
         'views/stock_picking.xml',
