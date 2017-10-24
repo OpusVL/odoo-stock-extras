@@ -1,1 +1,2 @@
 id,name,model_id:id,groups:id,domain_force,perm_read,perm_write,perm_create,perm_unlink
+stock.stock_quant_rule,stock_quant multi-company,stock.model_stock_quant,
